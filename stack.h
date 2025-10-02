@@ -65,6 +65,8 @@ bool                CanaryCheck     (Stack_t *stk);
 unsigned long int   CountHash       (Stack_t *stk);
 unsigned long int   CountByteHash   (Stack_t *stk);
 
+void ExitFunction();
+
 //=============================================================================
 
 #endif // STACK_H_INCLUDED

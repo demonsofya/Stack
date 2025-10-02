@@ -11,7 +11,9 @@
 // atexit
 // logfile ctor
 
-FILE *logfile = fopen("LogFile", "w");
+#define SEREGA stderr    // TODO: define PRINTF(...) fprintf(SEREGA, __VA_ARGS__)
+
+FILE *logfile = SEREGA; // fopen("LogFile", "w");
 
 unsigned long int HASH = 0;
 
@@ -41,6 +43,9 @@ int StackVerify(Stack_t *stk) {
 }
 
 bool CanaryCheck(Stack_t *stk) {
+
+    if (stk == NULL)
+        return Buffer_Error;
 
     if (*(stk->data - 1) != CANARY || stk->data[stk->capacity] != CANARY)
         return false;
@@ -80,7 +85,7 @@ int StackPush(Stack_t *stk, int value) {
 
         stk->capacity = (stk->stack_size + 1) * 2;
 
-        stk->data = (int *) realloc(stk->data - 1, (stk->capacity + 2) * sizeof(int));
+        stk->data = (int *) realloc(stk->data - 1, (stk->capacity + 2) * sizeof(int)); // Потому что указатель на первый элемент а не канарейку
 
         if (stk->data == NULL)
             return Buffer_Error;
@@ -155,61 +160,60 @@ void StackDump(Stack_t *stk, const char *file_name, const char *function_name, i
 
     int error = StackVerify(stk);
 
-    printf("\n===========DUMP===========\n\n");
+    fprintf(SEREGA, "\n===========DUMP===========\n\n");
 
-    printf("StackDump() from %s at %s:%d:\n", file_name, function_name, line_number);
+    fprintf(SEREGA, "StackDump() from %s at %s:%d:\n", file_name, function_name, line_number);
 
     if (error & Pointer_Error || stk == NULL) {      // Same variants, just to be sure
 
-        printf("ERROR! Stack pointer is wrong. Pointer is [%p]\n\n", stk);
+        fprintf(SEREGA, "ERROR! Stack pointer is wrong. Pointer is [%p]\n\n", stk);
         return;
     }
 
-    printf("Stack [%p]\n", stk);
+    fprintf(SEREGA, "Stack [%p]\n", stk);
+    fprintf(SEREGA, "Stack [%p]\n", stk);
 
     if (error & Buffer_Error) {
 
-        printf("ERROR! Buffer is wrong. Buffer pointer is [%p]\n\n", stk->data);    // Working
+        fprintf(SEREGA, "ERROR! Buffer is wrong. Buffer pointer is [%p]\n\n", stk->data);    // Working
         return;
     }
 
-    printf("Buffer [%p]\n", stk->data);
+    fprintf(SEREGA, "Buffer [%p]\n", stk->data);
 
     if (error & Canary_Error)
-        printf("ERROR! Canary returned false. Data was changed\n true canary %X, current are %X and %X\n\n",
+        fprintf(SEREGA, "ERROR! Canary returned false. Data was changed\n true canary %X, current are %X and %X\n\n",
                 CANARY, stk->data[-1], stk->data[stk->capacity]);
 
-    long unsigned int curr_hash = 0;
-    Recount_Hash(stk, &curr_hash);
     if (error & Hash_Error)
-        printf("ERROR! Hash error. Data was changed. Right hash is %ld, new is %ld\n\n", HASH, curr_hash);
+        fprintf(SEREGA, "ERROR! Hash error. Data was changed. Right hash is %ld, new is %ld\n\n", HASH, CountByteHash(stk));
 
     if (error & Size_Error)
-        printf("ERROR! Size is wrong, size is %d\n\n", stk->stack_size);
+        fprintf(SEREGA, "ERROR! Size is wrong, size is %d\n\n", stk->stack_size);
 
     if (error & Capacity_Error)
-        printf("ERROR! Capacity is wrong, capacity is %d\n\n", stk->capacity);
+        fprintf(SEREGA, "ERROR! Capacity is wrong, capacity is %d\n\n", stk->capacity);
 
     if (!(error & Size_Error) && !(error & Capacity_Error))
-        printf("Size is %d, capacity is %d\n\n", stk->stack_size, stk->capacity);
+        fprintf(SEREGA, "Size is %d, capacity is %d\n\n", stk->stack_size, stk->capacity);
 
     int curr_element = 0;
 
-    printf("-----------------------\n");
+    fprintf(SEREGA, "-----------------------\n");
 
     while (curr_element < stk->stack_size && curr_element < stk->capacity) {
 
-        printf("*[%d] = %d\n", curr_element, stk->data[curr_element]);
+        fprintf(SEREGA, "*[%d] = %d\n", curr_element, stk->data[curr_element]);
         curr_element++;
     }
 
     while (curr_element < stk->capacity) {
 
-        printf("[%d] = %d (POISON)\n", curr_element, stk->data[curr_element]);
+        fprintf(SEREGA, "[%d] = %d (POISON)\n", curr_element, stk->data[curr_element]);
         curr_element++;
     }
 
-    printf("=======================\n");
+    fprintf(SEREGA, "=======================\n");
 
 }
 
@@ -249,7 +253,7 @@ unsigned long int CountByteHash(Stack_t *stk) {
     for (int counter = 0; counter < stk->stack_size; counter++) {
 
         int number = stk->data[counter];
-        int curr_razrad = number%10;
+        int curr_razrad = number % 10;
 
         while (number != 0) {
             curr_hash = (curr_hash << 3) + curr_razrad;
@@ -263,4 +267,3 @@ unsigned long int CountByteHash(Stack_t *stk) {
 void ExitFunction() {
     fclose(logfile);
 }
-
